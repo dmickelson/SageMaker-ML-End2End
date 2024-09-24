@@ -13,6 +13,9 @@
  
  This code assumes you know how to access you AWS environment from the Console, and basic AWS SageMaker knowledge on how to start a SageMaker Domain, and start a Notebook instance.
  
- * Load or Copy the Notebook code into the AWS SageMaker Studio Jupter Lab to execute on the AWS Cloud infrastructure. 
+ You can preview the Pipeline in _SageMaker Studio_ _Pipelines_
  
+ _This is the DAG Image of the Pipeline that is created by the following Notebook SageMaker SDK_
+ 
+ ![SageMaker Pipeline](./SageMakerPipeline.png "SageMaker Pipeline")
  
