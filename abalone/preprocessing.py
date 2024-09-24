@@ -1,159 +1,106 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": 1,
-   "id": "c8672e54-679e-4cde-9bea-f5e7b915f46f",
-   "metadata": {
-    "tags": []
-   },
-   "outputs": [
-    {
-     "data": {
-      "text/plain": [
-       "4"
-      ]
-     },
-     "execution_count": 1,
-     "metadata": {},
-     "output_type": "execute_result"
-    }
-   ],
-   "source": [
-    "import argparse\n",
-    "import os\n",
-    "import requests\n",
-    "import tempfile\n",
-    "import numpy as np\n",
-    "import pandas as pd\n",
-    "\n",
-    "from sklearn.compose import ColumnTransformer\n",
-    "from sklearn.impute import SimpleImputer\n",
-    "from sklearn.pipeline import Pipeline\n",
-    "from sklearn.preprocessing import StandardScaler, OneHotEncoder\n",
-    "\n",
-    "# This preprocessing script is passed in to the processing step for running on the input data. \n",
-    "# The training step then uses the preprocessed training features and labels to train a model. \n",
-    "# The evaluation step uses the trained model and preprocessed test features and labels to evaluate the model. \n",
-    "# The script uses scikit-learn to do the following:\n",
-    "#  Fill in missing sex categorical data and encode it so it's suitable for training.\n",
-    "#  Scale and normalize all numerical fields except for rings and sex.\n",
-    "#  Split the data into training, test, and validation datasets.\n",
-    "\n",
-    "# Define feature and label column names and data types\n",
-    "# Because this is a headerless CSV file, specify the column names here.\n",
-    "feature_columns_names = [\n",
-    "    \"sex\",\n",
-    "    \"length\",\n",
-    "    \"diameter\",\n",
-    "    \"height\",\n",
-    "    \"whole_weight\",\n",
-    "    \"shucked_weight\",\n",
-    "    \"viscera_weight\",\n",
-    "    \"shell_weight\",\n",
-    "]\n",
-    "label_column = \"rings\"\n",
-    "\n",
-    "feature_columns_dtype = {\n",
-    "    \"sex\": str,\n",
-    "    \"length\": np.float64,\n",
-    "    \"diameter\": np.float64,\n",
-    "    \"height\": np.float64,\n",
-    "    \"whole_weight\": np.float64,\n",
-    "    \"shucked_weight\": np.float64,\n",
-    "    \"viscera_weight\": np.float64,\n",
-    "    \"shell_weight\": np.float64\n",
-    "}\n",
-    "label_column_dtype = {\"rings\": np.float64}\n",
-    "\n",
-    "def merge_two_dicts(x, y):\n",
-    "    z = x.copy()\n",
-    "    z.update(y)\n",
-    "    return z\n",
-    "\n",
-    "if __name__ == \"__main__\":\n",
-    "    base_dir = \"/opt/ml/processing\"\n",
-    "    \n",
-    "    df = pd.read_csv(\n",
-    "        f\"{base_dir}/input/abalone-dataset.csv\",\n",
-    "        header=None,\n",
-    "        names=feature_columns_names + [label_column],\n",
-    "        dtype=merge_two_dicts(feature_columns_dtype, label_column_dtype)\n",
-    "    )\n",
-    "    # Sets up preprocessing pipelines:\n",
-    "    # For numeric features: imputation (filling missing values with median) and scaling\n",
-    "    # For categorical features (sex): imputation (filling missing values with \"missing\") and one-hot encoding\n",
-    "    \n",
-    "    numeric_features = list(feature_columns_names).remove(\"sex\")\n",
-    "    numeric_transformer = Pipeline(\n",
-    "        steps=[\n",
-    "            (\"imputer\", SimpleImputer(strategy=\"median\")),\n",
-    "            (\"scaler\", StandardScaler())\n",
-    "        ]\n",
-    "    )\n",
-    "    \n",
-    "    categorical_features = [\"sex\"]\n",
-    "    categorical_transformer = Pipeline(\n",
-    "        steps=[\n",
-    "            (\"imputer\", SimpleImputer(strategy=\"constant\", fill_value=\"missing\")),\n",
-    "            (\"onehot\", OneHotEncoder(handle_unknown=\"ignore\"))\n",
-    "        ]\n",
-    "    )\n",
-    "    \n",
-    "    # Combines these pipelines \n",
-    "    preprocess = ColumnTransformer(\n",
-    "        transformers = [\n",
-    "            (\"num\", numeric_transformer, numeric_features),\n",
-    "            (\"cat\", categorical_transformer, categorical_features)\n",
-    "        ]\n",
-    "    )\n",
-    "    \n",
-    "    # Separates the target variable (\"rings\") from the features.\n",
-    "    y = df.pop(\"rings\")\n",
-    "    # Applies the preprocessing to the features.\n",
-    "    X_pre = preprocess.fit_transform(df)\n",
-    "    y_pre = y.to_numpy().reshape(len(y), 1)\n",
-    "    # Concatenates the preprocessed features with the target variable\n",
-    "    X = np.concatenate((y_pre, X_pre), axis=1)\n",
-    "    # Shuffles the data randomly.\n",
-    "    np.random.shuffle(X)\n",
-    "    # Splits the data into training (70%), validation (15%), and test (15%) sets.\n",
-    "    train, validation, test = np.split(X, [int(.7*len(X)), int(.85*len(X))])\n",
-    "\n",
-    "    pd.DataFrame(train).to_csv(f\"{base_dir}/train/train.csv\", header=False, index=False)\n",
-    "    pd.DataFrame(validation).to_csv(f\"{base_dir}/train/validation.csv\", header=False, index=False)\n",
-    "    pd.DataFrame(test).to_csv(f\"{base_dir}/train/test.csv\", header=False, index=False)\n",
-    "    "
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "184fa276-f3bf-4d36-a816-7a95acd1dbe7",
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "conda_python3",
-   "language": "python",
-   "name": "conda_python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.10.14"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
+import argparse
+import os
+import requests
+import tempfile
+import numpy as np
+import pandas as pd
+
+
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+
+# This preprocessing script is passed in to the processing step for running on the input data
+# The training step then uses the preprocessed training features and labels to train a model.
+# The evaluation step uses the trained model and preprocessed test features and labels to evaluate the model
+# The script uses scikit-learn to do the following:
+#  - Fill in missing sex categorical data and encode it so it's suitable for training.
+#  - Scale and normalize all numerical fields except for rings and sex.
+#  - Split the data into training, test, and validation datasets.
+
+# Define feature and label column names and data types
+# Because this is a headerless CSV file, specify the column names here.
+
+feature_columns_names = [
+    "sex",
+    "length",
+    "diameter",
+    "height",
+    "whole_weight",
+    "shucked_weight",
+    "viscera_weight",
+    "shell_weight",
+]
+label_column = "rings"
+
+feature_columns_dtype = {
+    "sex": str,
+    "length": np.float64,
+    "diameter": np.float64,
+    "height": np.float64,
+    "whole_weight": np.float64,
+    "shucked_weight": np.float64,
+    "viscera_weight": np.float64,
+    "shell_weight": np.float64
 }
+label_column_dtype = {"rings": np.float64}
+
+
+def merge_two_dicts(x, y):
+    z = x.copy()
+    z.update(y)
+    return z
+
+if __name__ == "__main__":
+    base_dir = "/opt/ml/processing"
+
+    df = pd.read_csv(
+        f"{base_dir}/input/abalone-dataset.csv",
+        header=None, 
+        names=feature_columns_names + [label_column],
+        dtype=merge_two_dicts(feature_columns_dtype, label_column_dtype)
+    )
+    # Sets up preprocessing pipelines:
+    # - For numeric features: imputation (filling missing values with median) and scaling
+    # - For categorical features (sex): imputation (filling missing values with \"missing\") and one-hot encoding,
+
+    numeric_features = list(feature_columns_names)
+    numeric_features.remove("sex")
+    numeric_transformer = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler())
+        ]
+    )
+
+    categorical_features = ["sex"]
+    categorical_transformer = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
+            ("onehot", OneHotEncoder(handle_unknown="ignore"))
+        ]
+    )
+
+    # Combines these pipelines \n",
+    preprocess = ColumnTransformer(
+        transformers=[
+            ("num", numeric_transformer, numeric_features),
+            ("cat", categorical_transformer, categorical_features)
+        ]
+    )
+    # Separates the target variable (\"rings\") from the features.
+    y = df.pop("rings")
+    # Applies the preprocessing to the features.
+    X_pre = preprocess.fit_transform(df)
+    y_pre = y.to_numpy().reshape(len(y), 1)
+    # Concatenates the preprocessed features with the target variable
+    X = np.concatenate((y_pre, X_pre), axis=1)
+    # Shuffles the data randomly.
+    np.random.shuffle(X)
+    # Splits the data into training (70%), validation (15%), and test (15%) sets.
+    train, validation, test = np.split(X, [int(.7*len(X)), int(.85*len(X))])
+
+    pd.DataFrame(train).to_csv(f"{base_dir}/train/train.csv", header=False, index=False)
+    pd.DataFrame(validation).to_csv(f"{base_dir}/validation/validation.csv", header=False, index=False)
+    pd.DataFrame(test).to_csv(f"{base_dir}/test/test.csv", header=False, index=False)
